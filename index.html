@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analisador Musical — Acordes, Notas, Escala e BPM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lucide@1/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-icon"><i data-lucide="audio-lines"></i></div>
+    <div>
+      <h1>Analisador Musical</h1>
+      <p class="tagline">Acordes · Notas · Escala · BPM — para músicos profissionais e amadores</p>
+    </div>
+  </div>
+  <button id="exportBtn" class="btn btn-ghost hidden" title="Exportar análise em texto">
+    <i data-lucide="download"></i><span>Exportar .TXT</span>
+  </button>
+</header>
+
+<main>
+
+  <!-- ===== ÁREA DE IMPORTAÇÃO ===== -->
+  <section id="dropZone" class="drop-zone">
+    <div class="drop-inner">
+      <div class="drop-icon"><i data-lucide="upload-cloud"></i></div>
+      <h2>Importe sua música</h2>
+      <p class="drop-sub">Arraste um arquivo de áudio aqui ou use os botões abaixo</p>
+
+      <div class="import-actions">
+        <button id="fileBtn" class="btn btn-primary">
+          <i data-lucide="file-audio-2"></i><span>Importar áudio</span>
+        </button>
+        <input type="file" id="fileInput" accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac,.aac,.opus,.webm" hidden>
+      </div>
+
+      <div class="url-row">
+        <div class="url-field">
+          <i data-lucide="link"></i>
+          <input type="url" id="urlInput" placeholder="ou cole um link de áudio direto (https://...mp3)">
+        </div>
+        <button id="urlBtn" class="btn btn-secondary">Carregar</button>
+      </div>
+
+      <p class="formats-note">
+        Formatos suportados: MP3, WAV, OGG, M4A/AAC, FLAC, OPUS, WEBM (qualquer formato que seu navegador decodifique).
+        <strong>YouTube e Spotify não podem ser lidos diretamente</strong> pelo navegador (bloqueio CORS/DRM) — baixe o
+        áudio como arquivo e importe, ou use um link direto de áudio.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===== PLAYER ===== -->
+  <section id="playerSection" class="player-card hidden">
+    <div class="player-head">
+      <div class="track-info">
+        <i data-lucide="music-4"></i>
+        <span id="trackName">—</span>
+      </div>
+      <div class="time-display">
+        <span id="curTime">0:00</span><span class="sep">/</span><span id="totTime">0:00</span>
+      </div>
+    </div>
+    <canvas id="waveform" height="110"></canvas>
+    <div class="player-controls">
+      <button id="playBtn" class="btn-play" title="Tocar / Pausar"><i data-lucide="play"></i></button>
+      <button id="stopBtn" class="btn-icon" title="Voltar ao início"><i data-lucide="rotate-ccw"></i></button>
+      <div class="vol-wrap">
+        <i data-lucide="volume-2"></i>
+        <input type="range" id="volume" min="0" max="1" step="0.01" value="0.9">
+      </div>
+      <span class="hint">Clique na forma de onda para buscar (seek)</span>
+    </div>
+  </section>
+
+  <!-- ===== PROGRESSO DA ANÁLISE ===== -->
+  <div id="progressBox" class="progress-box hidden">
+    <div class="progress-label"><i data-lucide="activity"></i><span id="progressText">Analisando…</span></div>
+    <div class="progress-track"><div id="progressBar" class="progress-fill"></div></div>
+  </div>
+
+  <!-- ===== RESULTADOS ===== -->
+  <section id="results" class="hidden">
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-icon"><i data-lucide="gauge"></i></div>
+        <div class="stat-label">BPM (andamento)</div>
+        <div class="stat-value" id="statBpm">—</div>
+        <div class="stat-sub" id="statBpmSub">batidas por minuto</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i data-lucide="key-round"></i></div>
+        <div class="stat-label">Tonalidade</div>
+        <div class="stat-value" id="statKey">—</div>
+        <div class="stat-sub" id="statKeySub">campo harmônico</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i data-lucide="music-3"></i></div>
+        <div class="stat-label">Escala</div>
+        <div class="scale-chips" id="statScale">—</div>
+        <div class="stat-sub" id="statScaleSub">notas da escala</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i data-lucide="clock-3"></i></div>
+        <div class="stat-label">Duração</div>
+        <div class="stat-value" id="statDur">—</div>
+        <div class="stat-sub" id="statDurSub">tempo total</div>
+      </div>
+    </div>
+
+    <!-- Acordes -->
+    <div class="panel">
+      <div class="panel-head">
+        <h3><i data-lucide="git-commit-horizontal"></i> Progressão de acordes</h3>
+        <span class="panel-hint" id="chordCount">—</span>
+      </div>
+      <div id="chordTimeline" class="chord-timeline"></div>
+      <p class="panel-note">Clique em um acorde para tocar a partir daquele ponto. Acordes são estimados a partir do cromagrama (triades maiores, menores, diminutas e sétimas).</p>
+    </div>
+
+    <!-- Melodia -->
+    <div class="panel">
+      <div class="panel-head">
+        <h3><i data-lucide="piano"></i> Melodia estimada (notas)</h3>
+        <span class="panel-hint" id="noteCount">—</span>
+      </div>
+      <canvas id="pianoRoll" height="220"></canvas>
+      <div id="noteList" class="note-list"></div>
+      <p class="panel-note">A melodia é extraída por detecção de pitch (autocorrelação) e é uma <strong>aproximação</strong> — em músicas com banda completa (polifônica) o baixo e a bateria podem interferir. Funciona melhor com voz, violão solo ou melodia destacada.</p>
+    </div>
+
+  </section>
+
+  <div id="toast" class="toast hidden"></div>
+
+</main>
+
+<footer class="footer">
+  <p></p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
