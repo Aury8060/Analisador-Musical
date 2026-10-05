@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Analisador Musical — Acordes, Notas, Escala e BPM</title>
+<title>Analisador Musical PRO — Acordes, Notas, Escala, BPM e Transposição</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/lucide@1/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,13 +17,14 @@
   <div class="brand">
     <div class="brand-icon"><i data-lucide="audio-lines"></i></div>
     <div>
-      <h1>Analisador Musical</h1>
-      <p class="tagline">Acordes · Notas · Escala · BPM — para músicos profissionais e amadores</p>
+      <h1>Analisador Musical <span class="pro-badge">PRO</span></h1>
+      <p class="tagline">Acordes · Notas · Escala · BPM · Compasso · Transposição · Metrônomo</p>
     </div>
   </div>
-  <button id="exportBtn" class="btn btn-ghost hidden" title="Exportar análise em texto">
-    <i data-lucide="download"></i><span>Exportar .TXT</span>
-  </button>
+  <div class="top-actions">
+    <button id="pdfBtn" class="btn btn-ghost hidden" title="Exportar relatório profissional em PDF"><i data-lucide="file-text"></i><span>PDF</span></button>
+    <button id="wavBtn" class="btn btn-ghost hidden" title="Baixar áudio transposto em WAV"><i data-lucide="file-audio-2"></i><span>WAV</span></button>
+  </div>
 </header>
 
 <main>
@@ -33,14 +35,10 @@
       <div class="drop-icon"><i data-lucide="upload-cloud"></i></div>
       <h2>Importe sua música</h2>
       <p class="drop-sub">Arraste um arquivo de áudio aqui ou use os botões abaixo</p>
-
       <div class="import-actions">
-        <button id="fileBtn" class="btn btn-primary">
-          <i data-lucide="file-audio-2"></i><span>Importar áudio</span>
-        </button>
+        <button id="fileBtn" class="btn btn-primary"><i data-lucide="file-audio-2"></i><span>Importar áudio</span></button>
         <input type="file" id="fileInput" accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac,.aac,.opus,.webm" hidden>
       </div>
-
       <div class="url-row">
         <div class="url-field">
           <i data-lucide="link"></i>
@@ -48,11 +46,9 @@
         </div>
         <button id="urlBtn" class="btn btn-secondary">Carregar</button>
       </div>
-
       <p class="formats-note">
-        Formatos suportados: MP3, WAV, OGG, M4A/AAC, FLAC, OPUS, WEBM (qualquer formato que seu navegador decodifique).
-        <strong>YouTube e Spotify não podem ser lidos diretamente</strong> pelo navegador (bloqueio CORS/DRM) — baixe o
-        áudio como arquivo e importe, ou use um link direto de áudio.
+        Formatos: MP3, WAV, OGG, M4A/AAC, FLAC, OPUS, WEBM.
+        <strong>YouTube e Spotify não funcionam por link</strong> (bloqueio CORS/DRM) — baixe o áudio como arquivo e importe.
       </p>
     </div>
   </section>
@@ -60,27 +56,50 @@
   <!-- ===== PLAYER ===== -->
   <section id="playerSection" class="player-card hidden">
     <div class="player-head">
-      <div class="track-info">
-        <i data-lucide="music-4"></i>
-        <span id="trackName">—</span>
-      </div>
-      <div class="time-display">
-        <span id="curTime">0:00</span><span class="sep">/</span><span id="totTime">0:00</span>
-      </div>
+      <div class="track-info"><i data-lucide="music-4"></i><span id="trackName">—</span></div>
+      <div class="time-display"><span id="curTime">0:00</span><span class="sep">/</span><span id="totTime">0:00</span></div>
     </div>
     <canvas id="waveform" height="110"></canvas>
     <div class="player-controls">
       <button id="playBtn" class="btn-play" title="Tocar / Pausar"><i data-lucide="play"></i></button>
       <button id="stopBtn" class="btn-icon" title="Voltar ao início"><i data-lucide="rotate-ccw"></i></button>
-      <div class="vol-wrap">
-        <i data-lucide="volume-2"></i>
-        <input type="range" id="volume" min="0" max="1" step="0.01" value="0.9">
-      </div>
-      <span class="hint">Clique na forma de onda para buscar (seek)</span>
+      <div class="vol-wrap"><i data-lucide="volume-2"></i><input type="range" id="volume" min="0" max="1" step="0.01" value="0.9"></div>
+      <span class="hint">Clique na forma de onda para buscar</span>
     </div>
   </section>
 
-  <!-- ===== PROGRESSO DA ANÁLISE ===== -->
+  <!-- ===== BARRA DE AJUSTES ===== -->
+  <section id="adjustBar" class="adjust-bar hidden">
+    <div class="adjust-group">
+      <div class="adjust-label"><i data-lucide="languages"></i> Notação</div>
+      <div class="toggle-wrap">
+        <button id="solfegeBtn" class="toggle-btn"><span class="t-off">C / D / E</span><span class="t-on">Dó / Ré / Mi</span></button>
+      </div>
+    </div>
+
+    <div class="adjust-group metro-group">
+      <div class="adjust-label"><i data-lucide="timer"></i> Metrônomo <span id="metroBpm" class="metro-bpm">—</span></div>
+      <div class="metro-controls">
+        <button id="metroBtn" class="btn btn-secondary"><i data-lucide="play"></i><span>Ativar</span></button>
+        <div id="beatDots" class="beat-dots"></div>
+      </div>
+    </div>
+
+    <div class="adjust-group transpose-group">
+      <div class="adjust-label"><i data-lucide="arrow-up-down"></i> Transpor tom</div>
+      <div class="transpose-controls">
+        <button class="t-btn" data-t="-2" title="Desce 1 tom">−1T</button>
+        <button class="t-btn" data-t="-1" title="Desce 1 semitom">−½</button>
+        <input type="range" id="transposeSlider" min="-12" max="12" step="1" value="0">
+        <button class="t-btn" data-t="1" title="Sobe 1 semitom">+½</button>
+        <button class="t-btn" data-t="2" title="Sobe 1 tom">+1T</button>
+        <button id="transposeReset" class="t-btn t-reset" title="Voltar ao tom original">0</button>
+        <span id="transposeLabel" class="transpose-label">Tom original</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PROGRESSO ===== -->
   <div id="progressBox" class="progress-box hidden">
     <div class="progress-label"><i data-lucide="activity"></i><span id="progressText">Analisando…</span></div>
     <div class="progress-track"><div id="progressBar" class="progress-fill"></div></div>
@@ -92,9 +111,9 @@
     <div class="stat-grid">
       <div class="stat-card">
         <div class="stat-icon"><i data-lucide="gauge"></i></div>
-        <div class="stat-label">BPM (andamento)</div>
+        <div class="stat-label">BPM</div>
         <div class="stat-value" id="statBpm">—</div>
-        <div class="stat-sub" id="statBpmSub">batidas por minuto</div>
+        <div class="stat-sub">andamento</div>
       </div>
       <div class="stat-card">
         <div class="stat-icon"><i data-lucide="key-round"></i></div>
@@ -103,48 +122,58 @@
         <div class="stat-sub" id="statKeySub">campo harmônico</div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon"><i data-lucide="music-3"></i></div>
-        <div class="stat-label">Escala</div>
-        <div class="scale-chips" id="statScale">—</div>
-        <div class="stat-sub" id="statScaleSub">notas da escala</div>
+        <div class="stat-icon"><i data-lucide="music-2"></i></div>
+        <div class="stat-label">Compasso</div>
+        <div class="stat-value" id="statMeter">—</div>
+        <div class="stat-sub" id="statMeterSub">estimado</div>
       </div>
       <div class="stat-card">
         <div class="stat-icon"><i data-lucide="clock-3"></i></div>
         <div class="stat-label">Duração</div>
         <div class="stat-value" id="statDur">—</div>
-        <div class="stat-sub" id="statDurSub">tempo total</div>
+        <div class="stat-sub">tempo total</div>
       </div>
+    </div>
+
+    <!-- Escala + teclado -->
+    <div class="panel">
+      <div class="panel-head">
+        <h3><i data-lucide="piano"></i> Escala e campo harmônico</h3>
+        <span class="panel-hint" id="scaleHint">—</span>
+      </div>
+      <div class="scale-chips" id="statScale"></div>
+      <div id="pianoKeys" class="piano-keys"></div>
+      <p class="panel-note">Teclas destacadas = notas da escala. Tecla mais clara = tônica. A escala e o teclado atualizam com a transposição.</p>
     </div>
 
     <!-- Acordes -->
     <div class="panel">
       <div class="panel-head">
-        <h3><i data-lucide="git-commit-horizontal"></i> Progressão de acordes</h3>
+        <h3><i data-lucide="git-commit-horizontal"></i> Progressão de acordes <span class="degree-legend">com grau harmônico</span></h3>
         <span class="panel-hint" id="chordCount">—</span>
       </div>
       <div id="chordTimeline" class="chord-timeline"></div>
-      <p class="panel-note">Clique em um acorde para tocar a partir daquele ponto. Acordes são estimados a partir do cromagrama (triades maiores, menores, diminutas e sétimas).</p>
+      <p class="panel-note">Clique em um acorde para tocar dali. Graus (I, ii, V7…) referem-se à tonalidade detectada. Tipos: maior, menor, diminuto, 7, m7, maj7.</p>
     </div>
 
     <!-- Melodia -->
     <div class="panel">
       <div class="panel-head">
-        <h3><i data-lucide="piano"></i> Melodia estimada (notas)</h3>
+        <h3><i data-lucide="music-3"></i> Melodia estimada (notas)</h3>
         <span class="panel-hint" id="noteCount">—</span>
       </div>
       <canvas id="pianoRoll" height="220"></canvas>
       <div id="noteList" class="note-list"></div>
-      <p class="panel-note">A melodia é extraída por detecção de pitch (autocorrelação) e é uma <strong>aproximação</strong> — em músicas com banda completa (polifônica) o baixo e a bateria podem interferir. Funciona melhor com voz, violão solo ou melodia destacada.</p>
+      <p class="panel-note">Melodia extraída por detecção de pitch (aproximação). Funciona melhor com voz ou melodia solo; em banda completa o baixo pode interferir.</p>
     </div>
 
   </section>
 
   <div id="toast" class="toast hidden"></div>
-
 </main>
 
 <footer class="footer">
-  <p></p>
+  <p>Análise 100% local no navegador (Web Audio API). BPM, acordes e compassos são estimativas para apoio ao estudo. A transposição do áudio usa variação de velocidade (varispeed) — o tom e a velocidade mudam juntos, como em toca-discos.</p>
 </footer>
 
 <script src="app.js"></script>
